@@ -1,0 +1,19 @@
+{:paths ["src"]
+ :deps  {ring/ring-core          {:mvn/version "1.12.2"}
+         ring/ring-jetty-adapter {:mvn/version "1.12.2"}
+         hiccup/hiccup           {:mvn/version "2.0.0-RC3"}
+         babashka/process        {:mvn/version "0.5.22"}
+         funcool/promesa         {:mvn/version "11.0.678"}
+         org.babashka/cli        {:mvn/version "0.8.60"}}
+ :aliases
+ {:build {:deps       {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
+          :ns-default build}
+
+  :native
+  ["shell"
+   "native-image" "--report-unsupported-elements-at-runtime" "--no-server" "--no-fallback"
+   "--initialize-at-build-time"
+   "-jar" "./target/${:uberjar-name:-${:name}-${:version}-standalone.jar}"
+   "-H:Name=./target/${:name}"]
+
+  }}
