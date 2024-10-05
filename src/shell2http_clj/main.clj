@@ -5,9 +5,9 @@
             [babashka.cli :as cli]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.core.protocols :refer [StreamableResponseBody]]
-            [promesa.exec.csp :as csp]
+            [clojure.core.async :as async]
             [hiccup2.core :as h])
-  (:import (promesa.exec.csp.channel Channel)))
+  (:import (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (set! *warn-on-reflection* true)
 
@@ -46,14 +46,14 @@
    :args->opts [:urls]})
 
 
-(extend-type Channel
+(extend-type ManyToManyChannel
   StreamableResponseBody
   (write-body-to-stream [channel response output-stream]
-    (csp/go (with-open [writer (io/writer output-stream)]
-             (loop []
-               (when-let [msg ^String (csp/<! channel)]
-                 (doto writer (.write msg) (.flush))
-                 (recur)))))))
+    (async/go (with-open [^java.io.Writer writer (io/writer output-stream)]
+                (loop []
+                  (when-let [^String msg (async/<! channel)]
+                    (doto writer (.write msg) (.flush))
+                    (recur)))))))
 
 (defn index-handler [_]
   (let [urls (:urls @options)]
@@ -77,16 +77,30 @@
        :headers {"Content-Type" "text/html"}
        :body    "Not found"})))
 
+(defn execute-async! [command]
+  (let [main-chan  (async/chan 1 (map #(str % "\n")) println)
+        mx-chan    (async/mult main-chan)
+        ret-chan   (async/chan 1024 (map #(str "OUT: " %)) println)
+        print-chan (async/chan 1 (map #(str "LOG: " %)) println)]
+    (async/tap mx-chan ret-chan)
+    (when (:echo @options) (async/tap mx-chan print-chan))
+
+    (async/go-loop []
+      (let [line (async/<! print-chan)]
+        (if line
+          (do (print line) (flush)
+              (recur))
+          (println "out of print-chan loop..."))))
+
+    (async/onto-chan! main-chan (line-seq (io/reader (:out (process/process command {:err :out})))))
+    ret-chan))
+
+
 (defn async-handler [request respond raise]
   (let [uri     (:uri request)
         command (get (:urls @options) uri)]
     (if command
-      (let [ch (csp/chan)]
-        (respond {:status 200 :headers {} :body ch})
-        (csp/go (doseq [line (line-seq (io/reader (:out (process/process command {:err :out}))))]
-                 (when (:echo @options) (println line))
-                 (csp/>! ch (str line "\n")))
-               (csp/close! ch)))
+      (respond {:status 200 :headers {} :body (execute-async! command)})
 
       (respond (main-handler request)))))
 
@@ -104,31 +118,35 @@
     (println "Starting server on port" (:port config) "...")
     (swap! jetty-server assoc :instance (run-jetty #'async-handler config)
            :config config)
-    (println "Server started")))
+    (println "Server started")
+    (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable stop-jetty-server))))
 
-(.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable stop-jetty-server))
+(defn set-args! [args]
+  (reset! options
+          (-> args
+              (cli/parse-args cli-spec)
+              :opts
+              (update :urls parse-urls))))
 
 (defn -main
   [& args]
-  (let [{:keys [opts args]} (cli/parse-args args cli-spec)]
-    (prn :opts opts :args args)
-    (reset! options opts)
-    (swap! options update :urls parse-urls)
+  (let [opts (set-args! args)]
+    (prn :opts opts)
     (if (or (:help opts) (:h opts))
       (println (show-help cli-spec))
       (start-jetty-server {:port (:port opts)}))))
 
 (comment
+  (set-args! ["--echo" "/ls" "ls" "/py" "python slow_log.py"])
+  @options
+  (:urls @options)
+
   (start-jetty-server {:port 3000})
   (stop-jetty-server)
 
 
-  (parse-urls ["/" "python bla.py"])
 
-  (into {} ["/" "python bla.py"])
-  (apply hash-map  ["/" "python bla.py" "/test" "ls"] )
-  (cli/parse-args ["/" "python bla.py" "/asd" "test2"] cli-spec)
-  (cli/parse-args ["--help" "/" "x"] cli-spec)
-  (cli/parse-args ["--help"] cli-spec)
+
+
 
   )

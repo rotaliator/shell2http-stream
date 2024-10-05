@@ -1,8 +1,12 @@
 (ns build
-  (:require [clojure.tools.build.api :as b]))
+  (:require [clojure.tools.build.api :as b]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
+
+
 
 (def lib 'shell2http_clj)
-(def version (format "0.0.%s" (b/git-count-revs nil)))
+(def version (-> (io/resource "VERSION") slurp str/trim))
 (def class-dir "target/classes")
 (def uber-file (format "target/%s-%s.jar" (name lib) version))
 
@@ -23,3 +27,9 @@
            :uber-file uber-file
            :basis     @basis
            :main      'shell2http-clj.main}))
+
+(comment
+
+  (clean nil)
+  (uberjar nil)
+  )
