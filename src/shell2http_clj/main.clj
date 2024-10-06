@@ -6,7 +6,8 @@
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.core.protocols :refer [StreamableResponseBody]]
             [clojure.core.async :as async]
-            [hiccup2.core :as h])
+            [hiccup2.core :as h]
+            [ring.util.codec :as codec])
   (:import (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (set! *warn-on-reflection* true)
@@ -41,6 +42,9 @@
     :trigger-only {:coerce  :boolean
                    :default false
                    :desc    "only command is executed and no output returned"}
+    :form         {:coerce  :boolean
+                   :default false
+                   :desc    "populate environment variables from query params"}
     :port         {:coerce  :number
                    :default 8080
                    :desc    "port for http server (default 8080)"}}
@@ -80,7 +84,7 @@
        :headers {"Content-Type" "text/html"}
        :body    "Not found"})))
 
-(defn execute-async! [command]
+(defn execute-async! [command envs]
   (let [main-chan  (async/chan 1 (map #(str % "\n")) #(println "main-chan ex:" %))
         mx-chan    (async/mult main-chan)
         ret-chan   (async/chan 1024 (map #(str "OUT: " %)) #(println "ret-chan ex:" %))
@@ -99,15 +103,17 @@
               (recur))
           (println "out of print-chan loop..."))))
 
-    (async/onto-chan! main-chan (line-seq (io/reader (:out (process/process command {:err :out})))))
+    (async/onto-chan! main-chan (line-seq (io/reader (:out (process/process command {:err :out :extra-env envs})))))
     ret-chan))
 
 
 (defn async-handler [request respond raise]
   (let [uri     (:uri request)
-        command (get (:urls @options) uri)]
+        command (get (:urls @options) uri)
+        envs    (when (:form @options)
+                  (-> request :query-string (or "") codec/form-decode (as-> $ (into {} $))))]
     (if command
-      (respond {:status 200 :headers {} :body (execute-async! command)})
+      (respond {:status 200 :headers {} :body (execute-async! command envs)})
 
       (respond (main-handler request)))))
 
@@ -144,12 +150,12 @@
       (start-jetty-server {:port (:port opts)}))))
 
 (comment
-  (set-args! ["--echo" "/ls" "ls" "/py" "python slow_log.py"])
+  (set-args! ["--form" "--echo" "/ls" "ls" "/py" "python slow_log.py" "/env" "env"])
   @options
   (:urls @options)
 
   (start-jetty-server {:port 3000})
   (stop-jetty-server)
 
-
+;;
   )
