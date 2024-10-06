@@ -74,12 +74,18 @@
                   [:tr [:td [:a {:href url} url]] [:td command]]))))}))
 
 
+(declare stop-jetty-server)
+
 (defn main-handler [request]
-  (let [uri  (:uri request)]
-    (case uri
-      "/"
+  (let [uri (:uri request)]
+    (cond
+      (and (not (:no-index @options)) (= uri  "/"))
       (index-handler request)
 
+      (and (:add-exit @options) (= uri "/exit"))
+      (System/exit 0)
+
+      :else
       {:status  404
        :headers {"Content-Type" "text/html"}
        :body    "Not found"})))

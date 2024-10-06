@@ -24,3 +24,7 @@ target/shell2http_clj-0.0.1 --echo /test 'bash -c "for x in {1..5}; do sleep 1; 
 ```
 curl.exe -v localhost:8080/test
 ```
+
+```
+clj -M -m shell2http-clj.main --echo --add-exit --form /py "python slow_log.py" /env "env" /log "tail -f /var/log
+```
