@@ -22,9 +22,10 @@
 (defn parse-urls [urls]
   (apply hash-map urls))
 
-(defn show-help
-  [spec]
-  (cli/format-opts (merge spec {:order (vec (keys (:spec spec)))})))
+(defn print-help [executable spec]
+  (println "usage:" executable "[options] /path \"shell command\" /path2 \"shell command2\"")
+  (println "options:")
+  (println (cli/format-opts (merge spec {:order (vec (keys (:spec spec)))}))))
 
 (def cli-spec
   {:spec
@@ -91,10 +92,10 @@
        :body    "Not found"})))
 
 (defn execute-async! [command envs]
-  (let [main-chan  (async/chan 1 (map #(str % "\n")) #(println "main-chan ex:" %))
+  (let [main-chan  (async/chan 1 (map #(str % "\n")))
         mx-chan    (async/mult main-chan)
-        ret-chan   (async/chan 1024 (map #(str "OUT: " %)) #(println "ret-chan ex:" %))
-        print-chan (async/chan 1 (map #(str "LOG: " %)) #(println "print-chan ex:" %))]
+        ret-chan   (async/chan 1024)
+        print-chan (async/chan 1)]
 
     (if (:trigger-only @options)
       (async/close! ret-chan)
@@ -104,10 +105,9 @@
 
     (async/go-loop []
       (let [line (async/<! print-chan)]
-        (if line
-          (do (print line) (flush)
-              (recur))
-          (println "out of print-chan loop..."))))
+        (when line
+          (print line) (flush)
+          (recur))))
 
     (async/onto-chan! main-chan (line-seq (io/reader (:out (process/process command {:err :out :extra-env envs})))))
     ret-chan))
@@ -150,9 +150,8 @@
 (defn -main
   [& args]
   (let [opts (set-args! args)]
-    (prn :opts opts)
     (if (or (:help opts) (:h opts))
-      (println (show-help cli-spec))
+      (print-help "shell2http_clj" cli-spec)
       (start-jetty-server {:port (:port opts)}))))
 
 (comment
