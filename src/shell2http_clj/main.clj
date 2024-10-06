@@ -27,20 +27,23 @@
 
 (def cli-spec
   {:spec
-   {:help     {:coerce :boolean
-               :desc   "prints this info and exits"}
-    :no-index {:coerce  :boolean
-               :desc    "don't generate index page"
-               :default false}
-    :add-exit {:coerce  :boolean
-               :desc    "add /exit command"
-               :default false}
-    :echo     {:coerce  :boolean
-               :default false
-               :desc    "reprints output to stdout"}
-    :port     {:coerce  :number
-               :default 8080
-               :desc    "port for http server (default 8080)"}}
+   {:help         {:coerce :boolean
+                   :desc   "prints this info and exits"}
+    :no-index     {:coerce  :boolean
+                   :desc    "don't generate index page"
+                   :default false}
+    :add-exit     {:coerce  :boolean
+                   :desc    "add /exit command"
+                   :default false}
+    :echo         {:coerce  :boolean
+                   :default false
+                   :desc    "reprints command output to stdout"}
+    :trigger-only {:coerce  :boolean
+                   :default false
+                   :desc    "only command is executed and no output returned"}
+    :port         {:coerce  :number
+                   :default 8080
+                   :desc    "port for http server (default 8080)"}}
    :coerce     {:urls []}
    :validate   {:urls args-ok?}
    :args->opts [:urls]})
@@ -78,11 +81,15 @@
        :body    "Not found"})))
 
 (defn execute-async! [command]
-  (let [main-chan  (async/chan 1 (map #(str % "\n")) println)
+  (let [main-chan  (async/chan 1 (map #(str % "\n")) #(println "main-chan ex:" %))
         mx-chan    (async/mult main-chan)
-        ret-chan   (async/chan 1024 (map #(str "OUT: " %)) println)
-        print-chan (async/chan 1 (map #(str "LOG: " %)) println)]
-    (async/tap mx-chan ret-chan)
+        ret-chan   (async/chan 1024 (map #(str "OUT: " %)) #(println "ret-chan ex:" %))
+        print-chan (async/chan 1 (map #(str "LOG: " %)) #(println "print-chan ex:" %))]
+
+    (if (:trigger-only @options)
+      (async/close! ret-chan)
+      (async/tap mx-chan ret-chan))
+
     (when (:echo @options) (async/tap mx-chan print-chan))
 
     (async/go-loop []
@@ -143,10 +150,6 @@
 
   (start-jetty-server {:port 3000})
   (stop-jetty-server)
-
-
-
-
 
 
   )
