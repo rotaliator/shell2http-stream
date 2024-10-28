@@ -6,7 +6,7 @@
 
 
 (def lib 'shell2http_clj)
-(def version (-> (io/resource "VERSION") slurp str/trim))
+(def version (-> (io/file "VERSION") slurp str/trim))
 (def class-dir "target/classes")
 (def uber-file (format "target/%s-%s.jar" (name lib) version))
 

@@ -1,0 +1,67 @@
+{:tasks
+ {:requires ([clojure.string :as str])
+
+  :init (def native-target "shell2http_clj")
+
+  build-jar
+  (let [version (str/trim (slurp "VERSION"))
+        cmd     "clj -T:build uberjar"]
+    (println "building jar ...")
+    (println cmd)
+    (shell "clj -T:build uberjar"))
+
+  build-native
+  (let [version (str/trim (slurp "VERSION"))
+        cmd     (str
+                 "native-image --report-unsupported-elements-at-runtime --no-server "
+                 "--no-fallback --initialize-at-build-time --install-exit-handlers "
+                 "-jar shell2http_clj-" version ".jar "
+                 "-H:Name=" native-target)]
+    (println "building native ...")
+    (println cmd)
+    (shell {:dir "./target/"} cmd))
+
+  tar-native
+  (shell {:dir "./target/"} (str "tar -czf " native-target ".tar.gz " native-target))
+
+
+  clean
+  (shell "rm -rf target")
+
+  pre-release
+  (let [version
+        (-> (slurp "VERSION")
+            (str/trim)
+            (str/replace (re-pattern "-snapshot") ""))]
+    (println "pre-release")
+    (spit "VERSION" version))
+
+  post-release
+  (let [version
+        (-> (slurp "VERSION")
+            (str/trim)
+            (str/replace (re-pattern "-snapshot") ""))
+
+        next-version
+        (-> version
+            (str/split (re-pattern "\\."))
+            (as-> $ (mapv (fn [i] (Integer/parseInt i)) $))
+            (update 2 inc)
+            (as-> $ (str/join "." $))
+            (str "-snapshot"))]
+    (println "post-release")
+    (println "next version" next-version)
+    (spit "VERSION" next-version))
+
+  build-all
+  (do (run 'build-jar)
+      (run 'build-native)
+      (run 'tar-native))
+
+  release
+  (do (println *command-line-args*)
+      (run 'pre-release)
+      (run 'build-all)
+      (run 'post-release))
+
+  }}
