@@ -1,7 +1,7 @@
-## run
+## run using clojure
 
 ```
-clj -M -m shell2http-clj.main
+clj -M -m shell2http-stream.main
 ```
 
 ## build jar
@@ -9,22 +9,37 @@ clj -M -m shell2http-clj.main
 clj -T:build uberjar
 ```
 
+or using Babashka:
+```
+bb build-jar
+```
+
 ## build native
 
 ```
-native-image --report-unsupported-elements-at-runtime --no-server --no-fallback --initialize-at-build-time --install-exit-handlers -jar ./target/shell2http_clj-0.0.1-snapshot.jar -H:Name=./target/shell2http_clj
+native-image --report-unsupported-elements-at-runtime --no-server --no-fallback --initialize-at-build-time --install-exit-handlers -jar ./target/shell2http-stream-${VERSION}.jar -H:Name=./target/shell2http-stream
+```
+or using Babashka:
+```
+bb build-native
 ```
 
-## test
+
+## Manual testing
 
 ```
-target/shell2http_clj-0.0.1 --echo /test 'bash -c "for x in {1..5}; do sleep 1; echo line $x; done"'
-```
-
-```
-curl.exe -v localhost:8080/test
+clj -M -m shell2http-stream.main --echo /test 'bash -c "for x in {1..5}; do sleep 1; echo hello!; done"'
 ```
 
 ```
-clj -M -m shell2http-clj.main --echo --add-exit --form /py "python slow_log.py" /env "env" /log "tail -f /var/log"
+curl -v localhost:8080/test
+```
+
+### log file watch
+```
+clj -M -m shell2http-stream.main --echo --add-exit /log "tail -f /var/log/example.log"
+```
+
+```
+curl -v localhost:8080/log
 ```

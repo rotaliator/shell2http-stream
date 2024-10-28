@@ -1,4 +1,4 @@
-(ns shell2http-clj.main
+(ns shell2http-stream.main
   (:gen-class)
   (:require [clojure.java.io :as io]
             [babashka.process :as process]
@@ -151,7 +151,7 @@
   [& args]
   (let [opts (set-args! args)]
     (if (or (:help opts) (:h opts))
-      (print-help "shell2http_clj" cli-spec)
+      (print-help "shell2http-stream" cli-spec)
       (start-jetty-server {:port (:port opts)}))))
 
 (comment

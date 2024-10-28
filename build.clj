@@ -5,7 +5,7 @@
 
 
 
-(def lib 'shell2http_clj)
+(def lib 'shell2http-stream)
 (def version (-> (io/file "VERSION") slurp str/trim))
 (def class-dir "target/classes")
 (def uber-file (format "target/%s-%s.jar" (name lib) version))
@@ -21,12 +21,12 @@
   (b/copy-dir {:src-dirs   ["src" "resources"]
                :target-dir class-dir})
   (b/compile-clj {:basis      @basis
-                  :ns-compile '[shell2http-clj.main]
+                  :ns-compile '[shell2http-stream.main]
                   :class-dir  class-dir})
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis     @basis
-           :main      'shell2http-clj.main}))
+           :main      'shell2http-stream.main}))
 
 (comment
 

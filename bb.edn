@@ -1,7 +1,7 @@
 {:tasks
  {:requires ([clojure.string :as str])
 
-  :init (def native-target "shell2http_clj")
+  :init (def native-target "shell2http-stream")
 
   build-jar
   (let [version (str/trim (slurp "VERSION"))
@@ -15,7 +15,7 @@
         cmd     (str
                  "native-image --report-unsupported-elements-at-runtime --no-server "
                  "--no-fallback --initialize-at-build-time --install-exit-handlers "
-                 "-jar shell2http_clj-" version ".jar "
+                 "-jar shell2http-stream-" version ".jar "
                  "-H:Name=" native-target)]
     (println "building native ...")
     (println cmd)
