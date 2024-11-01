@@ -46,9 +46,11 @@
     :form         {:coerce  :boolean
                    :default false
                    :desc    "populate environment variables from query params"}
+    :host         {:default "0.0.0.0"
+                   :desc    "the hostname to listen on (default 0.0.0.0)"}
     :port         {:coerce  :number
                    :default 8080
-                   :desc    "port for http server (default 8080)"}}
+                   :desc    "the port to listen on (defaults to 8080)"}}
    :coerce     {:urls []}
    :validate   {:urls args-ok?}
    :args->opts [:urls]})
@@ -119,7 +121,12 @@
         envs    (when (:form @options)
                   (-> request :query-string (or "") codec/form-decode (as-> $ (into {} $))))]
     (if command
-      (respond {:status 200 :headers {} :body (execute-async! command envs)})
+      (respond {:status  200
+                :headers {}
+                #_{"Content-Type"  "text/event-stream"
+                 "Cache-Control" "no-cache"
+                 "Connection"    "keep-alive"}
+                :body    (execute-async! command envs)})
 
       (respond (main-handler request)))))
 
@@ -131,10 +138,11 @@
   (.stop ^org.eclipse.jetty.server.Server (:instance @jetty-server)))
 
 (defn start-jetty-server [& [config]]
-  (let [config (merge {:port 3000
+  (let [config (merge {:host "0.0.0.0"
+                       :port 8080
                        :join? false
                        :async? true} config)]
-    (println "Starting server on port" (:port config) "...")
+    (println (str "Starting server on " (:host config) ":" (:port config)))
     (swap! jetty-server assoc :instance (run-jetty #'async-handler config)
            :config config)
     (println "Server started")
@@ -152,7 +160,7 @@
   (let [opts (set-args! args)]
     (if (or (:help opts) (:h opts))
       (print-help "shell2http-stream" cli-spec)
-      (start-jetty-server {:port (:port opts)}))))
+      (start-jetty-server (select-keys opts [:host :port] )))))
 
 (comment
   (set-args! ["--form" "--echo" "/ls" "ls" "/py" "python slow_log.py" "/env" "env"])
