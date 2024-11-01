@@ -126,12 +126,12 @@
         envs    (when (:form options)
                   (-> request :query-string (or "") codec/form-decode (as-> $ (into {} $))))]
     (if command
-      (respond {:status  200
-                :headers {}
-                #_{"Content-Type"  "text/event-stream"
-                   "Cache-Control" "no-cache"
-                   "Connection"    "keep-alive"}
-                :body    (execute-async! options command envs)})
+      (respond {:status 200
+                :headers
+                {"Content-Type"  "text/event-stream"
+                 "Cache-Control" "no-cache"
+                 "Connection"    "keep-alive"}
+                :body   (execute-async! options command envs)})
 
       (respond (main-handler request)))))
 
