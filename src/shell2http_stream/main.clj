@@ -75,10 +75,14 @@
      :headers {"Content-Type" "text/html"}
      :body
      (str
-      (h/html
-       (into [:table]
-             (for [[url command] urls]
-               [:tr [:td [:a {:href url} url]] [:td command]]))))}))
+      (h/html (h/raw "<!DOCTYPE html>")
+              [:html {:lang "en"}
+               (into [:table
+                      [:tr [:th "url"] [:th "command"]]]
+                     (for [[url command] urls]
+                       [:tr [:td [:a {:href url} url]] [:td (pr-str command)]]))
+               [:hr]
+               [:div [:a {:href "https://github.com/rotaliator/shell2http-stream"} "shell2http-stream"]]]))}))
 
 
 (declare stop-jetty-server)
