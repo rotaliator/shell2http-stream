@@ -58,6 +58,12 @@ or using Babashka:
 bb build-native
 ```
 
+## Running tests
+
+```
+clj -X:test
+```
+
 ## Manual testing
 
 ```
