@@ -12,7 +12,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce options (atom nil))
 
 (defn args-ok? [args]
   (and (< 1 (count args))
@@ -26,6 +25,11 @@
   (println "Usage:" executable "[options] /path \"shell command\" /path2 \"shell command2\"")
   (println "options:")
   (println (cli/format-opts (merge spec {:order (vec (keys (:spec spec)))}))))
+
+(defn wrap-options [options handler]
+  (fn [request respond raise]
+    (handler (assoc request ::options options) respond raise)))
+
 
 (def cli-spec
   {:spec
@@ -65,27 +69,27 @@
                     (doto writer (.write msg) (.flush))
                     (recur)))))))
 
-(defn index-handler [_]
-  (let [urls (:urls @options)]
+(defn index-handler [{::keys [options]}]
+  (let [urls (:urls options)]
     {:status  200
      :headers {"Content-Type" "text/html"}
      :body
      (str
       (h/html
-          (into [:table]
-                (for [[url command] urls]
-                  [:tr [:td [:a {:href url} url]] [:td command]]))))}))
+       (into [:table]
+             (for [[url command] urls]
+               [:tr [:td [:a {:href url} url]] [:td command]]))))}))
 
 
 (declare stop-jetty-server)
 
-(defn main-handler [request]
+(defn main-handler [{::keys [options] :as request}]
   (let [uri (:uri request)]
     (cond
-      (and (not (:no-index @options)) (= uri  "/"))
+      (and (not (:no-index options)) (= uri  "/"))
       (index-handler request)
 
-      (and (:add-exit @options) (= uri "/exit"))
+      (and (:add-exit options) (= uri "/exit"))
       (System/exit 0)
 
       :else
@@ -93,17 +97,17 @@
        :headers {"Content-Type" "text/html"}
        :body    "Not found"})))
 
-(defn execute-async! [command envs]
+(defn execute-async! [options command envs]
   (let [main-chan  (async/chan 1 (map #(str % "\n")))
         mx-chan    (async/mult main-chan)
         ret-chan   (async/chan 1024)
         print-chan (async/chan 1)]
 
-    (if (:trigger-only @options)
+    (if (:trigger-only options)
       (async/close! ret-chan)
       (async/tap mx-chan ret-chan))
 
-    (when (:echo @options) (async/tap mx-chan print-chan))
+    (when (:echo options) (async/tap mx-chan print-chan))
 
     (async/go-loop []
       (let [line (async/<! print-chan)]
@@ -116,17 +120,18 @@
 
 
 (defn async-handler [request respond raise]
-  (let [uri     (:uri request)
-        command (get (:urls @options) uri)
-        envs    (when (:form @options)
+  (let [options (::options request)
+        uri     (:uri request)
+        command (get (:urls options) uri)
+        envs    (when (:form options)
                   (-> request :query-string (or "") codec/form-decode (as-> $ (into {} $))))]
     (if command
       (respond {:status  200
                 :headers {}
                 #_{"Content-Type"  "text/event-stream"
-                 "Cache-Control" "no-cache"
-                 "Connection"    "keep-alive"}
-                :body    (execute-async! command envs)})
+                   "Cache-Control" "no-cache"
+                   "Connection"    "keep-alive"}
+                :body    (execute-async! options command envs)})
 
       (respond (main-handler request)))))
 
@@ -138,36 +143,34 @@
   (.stop ^org.eclipse.jetty.server.Server (:instance @jetty-server)))
 
 (defn start-jetty-server [& [config]]
-  (let [config (merge {:host "0.0.0.0"
-                       :port 8080
-                       :join? false
-                       :async? true} config)]
-    (println (str "Starting server on " (:host config) ":" (:port config)))
-    (swap! jetty-server assoc :instance (run-jetty #'async-handler config)
+  (prn config)
+  (let [config (merge {:join? false
+                       :async? true} config)
+        jetty-config (select-keys config [:host :port :join? :async?])]
+    (println (str "Starting server on " (:host jetty-config) ":" (:port jetty-config)))
+    (swap! jetty-server assoc :instance (run-jetty (wrap-options config async-handler) jetty-config)
            :config config)
     (println "Server started")
     (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable stop-jetty-server))))
 
-(defn set-args! [args]
-  (reset! options
-          (-> args
-              (cli/parse-args cli-spec)
-              :opts
-              (update :urls parse-urls))))
+(defn options-from-args [args]
+  (-> args
+      (cli/parse-args cli-spec)
+      :opts
+      (update :urls parse-urls)))
 
 (defn -main
   [& args]
-  (let [opts (set-args! args)]
-    (if (or (:help opts) (:h opts))
+  (let [options (options-from-args args)]
+    (if (or (:help options) (:h options))
       (print-help "shell2http-stream" cli-spec)
-      (start-jetty-server (select-keys opts [:host :port] )))))
+      (start-jetty-server options))))
 
 (comment
-  (set-args! ["--form" "--echo" "/ls" "ls" "/py" "python slow_log.py" "/env" "env"])
-  @options
-  (:urls @options)
 
-  (start-jetty-server {:port 3000})
+  (let [options (options-from-args ["--form" "--echo" "/ls" "ls" "/env" "env" "/echo" "echo Hello!"])]
+    (start-jetty-server options))
+
   (stop-jetty-server)
 
 ;;
