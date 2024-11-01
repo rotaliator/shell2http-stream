@@ -23,34 +23,34 @@
   (apply hash-map urls))
 
 (defn print-help [executable spec]
-  (println "usage:" executable "[options] /path \"shell command\" /path2 \"shell command2\"")
+  (println "Usage:" executable "[options] /path \"shell command\" /path2 \"shell command2\"")
   (println "options:")
   (println (cli/format-opts (merge spec {:order (vec (keys (:spec spec)))}))))
 
 (def cli-spec
   {:spec
    {:help         {:coerce :boolean
-                   :desc   "prints this info and exits"}
+                   :desc   "Prints this info and exits"}
     :no-index     {:coerce  :boolean
-                   :desc    "don't generate index page"
+                   :desc    "Do not generate an index page"
                    :default false}
     :add-exit     {:coerce  :boolean
-                   :desc    "add /exit command"
+                   :desc    "Adds an /exit command"
                    :default false}
     :echo         {:coerce  :boolean
                    :default false
-                   :desc    "reprints command output to stdout"}
+                   :desc    "Reprints command output to stdout"}
     :trigger-only {:coerce  :boolean
                    :default false
-                   :desc    "only command is executed and no output returned"}
+                   :desc    "Only executes the command without returning output"}
     :form         {:coerce  :boolean
                    :default false
-                   :desc    "populate environment variables from query params"}
+                   :desc    "Populates environment variables from query parameters"}
     :host         {:default "0.0.0.0"
-                   :desc    "the hostname to listen on (default 0.0.0.0)"}
+                   :desc    "The hostname to listen on (default: 0.0.0.0)"}
     :port         {:coerce  :number
                    :default 8080
-                   :desc    "the port to listen on (defaults to 8080)"}}
+                   :desc    "The port to listen on (default: 8080)"}}
    :coerce     {:urls []}
    :validate   {:urls args-ok?}
    :args->opts [:urls]})
