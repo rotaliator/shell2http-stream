@@ -5,10 +5,10 @@
 
   build-jar
   (let [version (str/trim (slurp "VERSION"))
-        cmd     "clj -T:build uberjar"]
+        cmd     "clojure -T:build uberjar"]
     (println "building jar ...")
     (println cmd)
-    (shell "clj -T:build uberjar"))
+    (shell "clojure -T:build uberjar"))
 
   build-native
   (let [version (str/trim (slurp "VERSION"))
@@ -29,7 +29,7 @@
   (shell "rm -rf target")
 
   test
-  (shell "clj -X:test")
+  (shell "clojure -X:test")
 
   pre-release
   (let [version
