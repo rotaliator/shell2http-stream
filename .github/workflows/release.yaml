@@ -34,13 +34,15 @@ jobs:
       - name: Pre-release
         run: bb run pre-release
 
-      - name: Tag
+      - name: Tag+version
         id: tag
         run: |
           tag=v$(cat VERSION)
           message="new version ${tag}"
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add VERSION
+          git commit -m "new version ${tag}"
           git tag -a "${tag}" -m "${message}"
           git push origin "${tag}"
           echo "TAG=$tag" >> $GITHUB_OUTPUT
