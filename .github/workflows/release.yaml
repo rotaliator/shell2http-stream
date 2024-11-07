@@ -38,7 +38,7 @@ jobs:
         id: tag
         run: |
           version=$(cat VERSION)
-          tag=v${VERSION}
+          tag=v${version}
           message="new version ${version}"
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
