@@ -70,9 +70,14 @@ jobs:
       - name: Post Release
         run: bb run post-release
 
+      - name: Get next version
+        run: |
+          VER=$(cat VERSION)
+          echo "VERSION=$VER" >> $GITHUB_ENV
+
       - name: Commit version
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_user_name: 🤖
           file_pattern: VERSION
-          commit_message: new version ${{ steps.tag.outputs.TAG }}
+          commit_message: new version ${{ env.VERSION }}
