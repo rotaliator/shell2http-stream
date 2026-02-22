@@ -22,7 +22,9 @@
     (shell {:dir "./target/"} cmd))
 
   tar-native
-  (shell {:dir "./target/"} (str "tar -czf " native-target ".tar.gz " native-target))
+  (let [version      (str/trim (slurp "VERSION"))
+        tar-filename (str native-target "-Linux-amd64-" version ".tar.gz")]
+    (shell {:dir "./target/"} (str "tar -czf " tar-filename native-target)))
 
 
   clean
