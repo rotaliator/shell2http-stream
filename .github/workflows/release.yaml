@@ -15,18 +15,18 @@ jobs:
         with:
           version: '1.4.192'
       - name: Prepare java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'graalvm'
           java-version: '21'
       - name: Install clojure tools
-        uses: DeLaGuardo/setup-clojure@12.5
+        uses: DeLaGuardo/setup-clojure@13.5.2
         with:
-          cli: 1.12.0.1479
-          bb: 1.4.192
+          cli: 1.12.4.1602
+          bb: 1.12.215
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: bb run test
@@ -79,7 +79,7 @@ jobs:
           echo "VERSION=$VER" >> $GITHUB_ENV
 
       - name: Commit version
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_user_name: 🤖
           file_pattern: VERSION
