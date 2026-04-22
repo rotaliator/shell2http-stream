@@ -15,6 +15,7 @@
         cmd     (str
                  "native-image --report-unsupported-elements-at-runtime --no-server "
                  "--no-fallback --initialize-at-build-time --install-exit-handlers "
+                 "--static "
                  "-jar shell2http-stream-" version ".jar "
                  "-H:Name=" native-target)]
     (println "building native ...")
@@ -23,7 +24,7 @@
 
   tar-native
   (let [version      (str/trim (slurp "VERSION"))
-        tar-filename (str native-target "-native-linux-amd64-" version ".tar.gz")]
+        tar-filename (str native-target "-native-linux-amd64-static" version ".tar.gz")]
     (shell {:dir "./target/"} (str "tar -czf " tar-filename " " native-target)))
 
 
